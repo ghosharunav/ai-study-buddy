@@ -1,0 +1,45 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.schemas.flashcards import GenerateFlashcardsRequest, FlashcardSetResponse
+from app.services import flashcards_service
+from app.services.session_service import SessionNotFoundError
+from app.prompt_engine.chains.validated_generation import JSONGenerationError
+
+router = APIRouter(tags=["flashcards"])
+
+
+@router.post("/sessions/{session_id}/flashcards", response_model=FlashcardSetResponse)
+def generate_flashcards(session_id: int, payload: GenerateFlashcardsRequest, db: Session = Depends(get_db)):
+    try:
+        fset = flashcards_service.generate_flashcard_set(
+            db, session_id, payload.topic, payload.difficulty_level, payload.num_cards
+        )
+        return FlashcardSetResponse.from_set(fset)
+    except SessionNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except JSONGenerationError as e:
+        raise HTTPException(status_code=502, detail=f"AI response validation failed: {str(e)}")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"LLM provider error: {str(e)}")
+
+
+@router.get("/sessions/{session_id}/flashcards", response_model=list[FlashcardSetResponse])
+def list_flashcards(session_id: int, db: Session = Depends(get_db)):
+    try:
+        sets = flashcards_service.list_flashcard_sets(db, session_id)
+        return [FlashcardSetResponse.from_set(s) for s in sets]
+    except SessionNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/flashcards/{set_id}", response_model=FlashcardSetResponse)
+def get_flashcard_set(set_id: int, db: Session = Depends(get_db)):
+    try:
+        fset = flashcards_service.get_flashcard_set_or_raise(db, set_id)
+        return FlashcardSetResponse.from_set(fset)
+    except flashcards_service.FlashcardSetNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))

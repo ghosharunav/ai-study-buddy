@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+
+# Secrets — never commit real API keys
+.env
+
+# Local database
+*.db
+*.sqlite3
+
+# Editor/OS junk
+.vscode/
+.idea/
+.DS_Store
+
+# Frontend
+node_modules/
+dist/
