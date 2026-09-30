@@ -53,6 +53,12 @@ app.include_router(progress_router.router, prefix="/api")
 app.include_router(study_plan_router.router, prefix="/api")
 app.include_router(materials_router.router, prefix="/api")
 
+@app.get("/")
+def root():
+    return {
+        "message": "AI Study Buddy Backend is running",
+        "status": "ok"
+    }
 
 @app.get("/api/health")
 def health_check():
